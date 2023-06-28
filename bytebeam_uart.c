@@ -1,3 +1,9 @@
+#include "nwy_bb_uart.h"
+#include "nwy_bb_ble.h"
+#include "nwy_bb_osi_api.h"
+#include "nwy_bb_usb_serial.h"
+#include "nwy_bb_pm.h"
+
 void uart_config(void)
 {
    bytebeam_uart_config_t uart_config;
@@ -145,6 +151,386 @@ int32_t send_ack_nack(uint8_t status, uint8_t command, uint8_t *payload, uint16_
     return 0;
 }
 
+int32_t execute_command(UART_data_struct *uart_strcut)
+{
+
+    struct timeval tv;
+    static int count = 0;
+    static double s = 0;
+    static double ms = 0;
+    static unsigned long long timestamp_start;
+
+    if (s == 0)
+    {
+        gettimeofday(&tv, NULL);
+        s = tv.tv_sec;
+        ms = ((double)tv.tv_usec) / 1.0e3;
+        timestamp_start = (unsigned long long)(s * 1000 + ms);
+    }
+
+    switch (uart_strcut->cmd)
+    {
+    case 0x00:
+    {
+        heart_beat_received_counter = 0;
+        bytebeam_ext_echo("Execute command %d\r\n", uart_strcut->cmd);
+        snprintf(s32_app_fw_ver, 15, "\"%d.%d.%d\"", uart_strcut->payload[0], uart_strcut->payload[1], uart_strcut->payload[2]);
+        input_voltage = ((float)(((uint16_t)uart_strcut->payload[6] << 8) | uart_strcut->payload[5]) * 3.3 * 6.0) / 4096;
+        batt_voltage = ((float)(((uint16_t)uart_strcut->payload[4] << 8) | uart_strcut->payload[3]) * 3.3 * 3.0) / 4096;
+        ign_status = uart_strcut->payload[7];
+        send_ack_nack(0, uart_strcut->cmd, NULL, 0);
+        break;
+    }
+    case 0xCE:
+    {
+        snprintf(tork_fw_ver, 15, "\"%c%c%c%c\"", uart_strcut->payload[0], uart_strcut->payload[1], uart_strcut->payload[2], uart_strcut->payload[3]);
+        snprintf(tork_hw_ver, 15, "\"%c%c%c%c\"", uart_strcut->payload[4], uart_strcut->payload[5], uart_strcut->payload[6], uart_strcut->payload[7]);
+    }
+    case 0x04:
+    {
+        count++;
+        // bytebeam_ext_echo("Execute command switch %d\r\n", uart_strcut.cmd);
+        gettimeofday(&tv, NULL);
+        double s = tv.tv_sec;
+        double ms = ((double)tv.tv_usec) / 1.0e3;
+        unsigned long long timestamp_end = (unsigned long long)(s * 1000 + ms);
+        last_can_rx_msg_time = timestamp_end;
+
+        if ((timestamp_end - timestamp_start) > 950)
+        {
+            // bytebeam_ext_echo("\r\nTime elapsed:%llu count:%d, \r\n", timestamp_end-timestamp_start, count*60);
+            count = 0;
+            timestamp_start = timestamp_end;
+            // bytebeam_ext_echo("The queue size is: %d", 10 - bytebeam_get_queue_spaceevent_cnt(mqtt_publish_msg_queue));
+        }
+
+        send_ack_nack(0, uart_strcut->cmd, NULL, 0);
+        if (http_download_flag == 0)
+        {
+            send_can_mqtt(uart_strcut);
+        }
+        break;
+    }
+    case TORK_BLDR_INIT_ACK:
+    {
+        if (uart_strcut->payload[0] == 0xAA)
+        {
+            bytebeam_ext_echo("Tork bootloader activation successful\r\n");
+            tork_bldr_cmd_e = TORK_BLDR_CODE_SIZE_CMD;
+        }
+        break;
+    }
+    case TORK_BLDR_CODE_SIZE_CMD_ACK:
+    {
+        if (uart_strcut->payload[0] == 0xAA)
+        {
+            bytebeam_ext_echo("Tork bootloader code size transmit successful\r\n");
+            tork_bldr_cmd_e = TORK_BLDR_ERASE_CMD;
+        }
+        break;
+    }
+    case TORK_BLDR_ERASE_CMD_ACK:
+    {
+        if (uart_strcut->payload[0] == 0xAA)
+        {
+            bytebeam_ext_echo("Tork bootloader flash erase successful\r\n");
+            tork_bldr_cmd_e = TORK_BLDR_SEND_DATA_CMD;
+        }
+        break;
+    }
+    case TORK_BLDR_WRITE_DATA_BLOCK_ACK:
+    {
+        if (uart_strcut->payload[0] == 0xAA)
+        {
+            if (all_blocks_sent == 1)
+            {
+                bytebeam_ext_echo("Tork bootloader entire firmware image write successful\r\n");
+                tork_bldr_cmd_e = TORK_BLDR_SEND_JMP_CMD;
+            }
+            else
+            {
+                bytebeam_ext_echo("Tork bootloader block write successful\r\n");
+                tork_bldr_cmd_e = TORK_BLDR_SEND_DATA_CMD;
+            }
+        }
+        break;
+    }
+    case TORK_BLDR_JMP_CMD_ACK:
+    {
+        if (uart_strcut->payload[0] == 0xAA)
+        {
+            bytebeam_ext_echo("Tork bootloader jump to main app successful\r\n");
+            tork_bldr_cmd_e = TORK_BLDR_APP_UPDATE_SUCCESS;
+        }
+        break;
+    }
+    /*******************************************************************************************************************/
+    case BOOTLOADER_MODE_ENABLE_CMD_SEND:
+    {
+        if (uart_strcut->payload[0] == 0xAA)
+        {
+            bytebeam_ext_echo("Bootloader mode activated cmd  ACK Success received\r\n");
+            bootloader_uart_tx_cmd_e = BOOTLOADER_CONFIG_DATA_CMD_SEND;
+        }
+        else
+        {
+            bytebeam_ext_echo("Bootloader mode activated cmd  ACK  Failer received\r\n");
+        }
+    }
+    break;
+        /*******************************************************************************************************************/
+    case BOOTLOADER_CONFIG_DATA_CMD_SEND:
+    {
+        if (uart_strcut->payload[0] == 0xAA)
+        {
+            bytebeam_ext_echo("Bootloader config data send  cmd  ACK Success received\r\n");
+            bootloader_uart_tx_cmd_e = BOOTLOADER_1KB_CRC_DATA_SEND;
+        }
+        else
+        {
+            bytebeam_ext_echo("Bootloader config data send  cmd  ACK failed received\r\n");
+        }
+    }
+    break;
+        /*******************************************************************************************************************/
+    case BOOTLOADER_1KB_CRC_DATA_SEND:
+    {
+        if (uart_strcut->payload[0] == 0xAA)
+        {
+            bytebeam_ext_echo("Bootloader 1kb  data send  cmd  ACK Success received\r\n");
+            bootloader_uart_tx_cmd_e = BOOTLOADER_1KB_CRC_DATA_SEND;
+            // if(new_firmware_file_size_u32 != 0)
+            // {
+            //     bootloader_uart_tx_cmd_e = BOOTLOADER_1KB_CRC_DATA_SEND;
+            // }
+            // else
+            // {
+            //     //bootloader_uart_tx_cmd_e = BOOTLOADER_END_OF_DATA_CMD_SEND;
+            // }
+        }
+        else
+        {
+            bytebeam_ext_echo("Bootloader config data send  cmd  ACK failed received\r\n");
+        }
+    }
+    break;
+        /*******************************************************************************************************************/
+    case BOOTLOADER_END_OF_DATA_CMD_SEND:
+    {
+        // if(uart_rx_data.payload[0]  == 0xAA)
+        if (uart_strcut->payload[0] == 0xAA)
+        {
+            bytebeam_ext_echo("Bootloader BOOTLOADER_END_OF_DATA_CMD_SEND  ACK Success received\r\n");
+            bootloader_uart_tx_cmd_e = BOOTLOADER_WHOLE_BIN_CRC_CHECK_CMD_SEND;
+        }
+        else
+        {
+            bytebeam_ext_echo("Bootloader BOOTLOADER_END_OF_DATA_CMD_SEND ACK failed received\r\n");
+        }
+    }
+    break;
+    
+    /*******************************************************************************************************************/
+    case BOOTLOADER_WHOLE_BIN_CRC_CHECK_CMD_SEND:
+    {
+        if (uart_strcut->payload[0] == 0xAA)
+        {
+            bytebeam_ext_echo("Bootloader BOOTLOADER_WHOLE_BIN_CRC_CHECK_CMD_SEND  ACK Success received\r\n");
+            bootloader_uart_tx_cmd_e = BOOTLOADER_JUMPING_TO_BOOTLOADER_CMD_SEND;
+        }
+        else
+        {
+            if (s32_update_retries > 0)
+            {
+                s32_update_retries--;
+                bootloader_uart_tx_cmd_e = BOOTLOADER_CONFIG_DATA_CMD_SEND;
+            }
+            else
+            {
+                publish_action_status(ota_action_id, 85, "Failed", "S32 CRC Mismatch");
+                bytebeam_sleep(3000);
+                publish_action_status(ota_action_id, 85, "Failed", "S32 CRC Mismatch");
+                bytebeam_sleep(3000);
+                bytebeam_power_off(2);
+            }
+            bytebeam_ext_echo("Bootloader BOOTLOADER_WHOLE_BIN_CRC_CHECK_CMD_SEND ACK failed received\r\n");
+        }
+    }
+    break;
+    
+    /*******************************************************************************************************************/
+    case BOOTLOADER_JUMPING_TO_BOOTLOADER_CMD_SEND:
+    {
+        if (uart_strcut->payload[0] == 0xAA)
+        {
+            bytebeam_ext_echo("Bootloader BOOTLOADER_JUMPING_TO_BOOTLOADER_CMD_SEND  ACK Success received\r\n");
+            bootloader_uart_tx_cmd_e = BOOTLOADER_INT_APP_ERASE_CMD_SEND;
+        }
+        else
+        {
+            bytebeam_ext_echo("Bootloader BOOTLOADER_JUMPING_TO_BOOTLOADER_CMD_SEND ACK failed received\r\n");
+        }
+    }
+    break;
+        /*******************************************************************************************************************/
+    case BOOTLOADER_INT_APP_ERASE_CMD_SEND:
+    {
+        if (uart_strcut->payload[0] == 0xAA)
+        {
+            bytebeam_ext_echo("Bootloader BOOTLOADER_INT_APP_ERASE_CMD_SEND  ACK Success received\r\n");
+            bootloader_uart_tx_cmd_e = BOOTLOADER_INT_APP_WRITE_CMD_SEND;
+        }
+        else
+        {
+            bytebeam_ext_echo("Bootloader BOOTLOADER_INT_APP_ERASE_CMD_SEND ACK failed received\r\n");
+        }
+    }
+    break;
+        /*******************************************************************************************************************/
+    case BOOTLOADER_INT_APP_WRITE_CMD_SEND:
+    {
+        if (uart_strcut->payload[0] == 0xAA)
+        {
+            bytebeam_ext_echo("Bootloader BOOTLOADER_INT_APP_WRITE_CMD_SEND  ACK Success received\r\n");
+            bootloader_uart_tx_cmd_e = BOOTLOADER_JUMPING_APPLICATION_CMD_SEND;
+        }
+        else
+        {
+            bytebeam_ext_echo("Bootloader BOOTLOADER_INT_APP_WRITE_CMD_SEND ACK failed received\r\n");
+        }
+    }
+    break;
+        /********************************************************************************************************************/
+    case BOOTLOADER_JUMPING_APPLICATION_CMD_SEND:
+    {
+        if (uart_strcut->payload[0] == 0xAA)
+        {
+            bytebeam_ext_echo("New Firmware Running Succesfully\r\n");
+            bootloader_uart_tx_cmd_e = BOOTLOADER_STATE_UNKNOWN;
+        }
+        else
+        {
+            bytebeam_ext_echo("Bootloader BOOTLOADER_JUMPING_APPLICATION_CMD_SEND ACK failed received\r\n");
+        }
+    }
+    break;
+        /********************************************************************************************************************/
+    case BOOTLOADER_TIMEOUT_ERROR_WITH_DIAG_TOOL_CMD_SEND:
+    {
+    }
+    break;
+        /********************************************************************************************************************/
+    case BOOTLOADER_APPLICATION_NOT_AVAILABLE_CMD_SEND:
+    {
+        bootloader_uart_tx_cmd_e = BOOTLOADER_MODE_ENABLE_CMD_SEND;
+        bytebeam_ext_echo("BOOTLOADER_APPLICATION_NOT_AVAILABLE_CMD_ACK_RECEIVED\r\n");
+    }
+    break;
+    case 0xBB:
+    {
+        // retrieve_ble_data
+        uint8_t can_buff[8] = {0};
+        uint32_t msg_id = ((uint32_t)(uart_strcut->payload[0])) |
+                          (((uint32_t)(uart_strcut->payload[1])) << 8) |
+                          (((uint32_t)(uart_strcut->payload[2])) << 16) |
+                          (((uint32_t)(uart_strcut->payload[3])) << 24);
+        // bytebeam_ext_echo("received ble can msg, ID is %X\r\n",msg_id);
+
+        if (msg_id == 0x777)
+        {
+            bytebeam_power_off(2);
+            return 0;
+        }
+        if (http_download_flag == 0)
+            bytebeam_ble_send_data(12, uart_strcut->payload);
+        break;
+    }
+#if 0
+        case 0xCC:
+        {
+            if(uart_strcut->payload[0] == 0xAA)
+            {
+                bytebeam_ext_echo("SOS received\r\n");
+                gettimeofday(&tv, NULL);
+
+                double s = tv.tv_sec;
+                double ms = ((double)tv.tv_usec) / 1.0e6;
+
+                unsigned long long timestamp1 = (unsigned long long)(s + ms) * 1000;
+                uint32_t sos_button_status = 1;
+                static uint32_t sq_id = 0;
+                sq_id++;
+                memset(json_sos_message_buff_gau8, 0, JSON_SOS_MESSAGES_BUFF_LEN);
+                snprintf(json_sos_message_buff_gau8, sizeof(json_sos_message_buff_gau8), sos_mess_json,
+                         timestamp1,
+                         sos_button_status,
+                         sq_id);
+                bytebeam_ext_echo("%s", json_sos_message_buff_gau8); // For the verification of the JSON frame
+
+                UART_data_struct sos_publish_msg;
+                sos_publish_msg.cmd = 0xCC;
+                sos_publish_msg.length_u16 = strlen((char *)json_sos_message_buff_gau8);
+
+                memcpy(sos_publish_msg.payload, json_sos_message_buff_gau8, sos_publish_msg.length_u16);
+
+                // if (get_MQTT_COnnection_Status() && (store_msg_flag == false) && (bytebeam_get_queue_spaceevent_cnt(mqtt_publish_msg_queue)!= 0))
+                if (get_MQTT_COnnection_Status()) 
+                {
+                    bytebeam_ext_echo("publishing SOS in MQTT\r\n");
+                    bytebeam_put_msg_que(mqtt_publish_msg_queue, &sos_publish_msg, 0);
+                }
+            }
+        }
+        break;
+#endif
+#if 1
+    case 0xDD:
+    {
+        ign_status = uart_strcut->payload[0];
+        // bytebeam_ext_echo("Ignition message\r\n");
+        // gettimeofday(&tv, NULL);
+
+        // double s = tv.tv_sec;
+        // double ms = ((double)tv.tv_usec) / 1.0e6;
+
+        // unsigned long long timestamp1 = (unsigned long long)(s + ms) * 1000;
+        // uint32_t ignition_button_status = (uint32_t)uart_strcut->payload[0];
+        // static uint32_t sq_id = 0;
+        // sq_id++;
+        // memset(json_ignition_message_buff_gau8, 0, JSON_IGN_MESSAGES_BUFF_LEN);
+        // snprintf(json_ignition_message_buff_gau8, sizeof(json_ignition_message_buff_gau8), ignition_mess_json,
+        //             timestamp1,
+        //             ignition_button_status,
+        //             sq_id);
+        // bytebeam_ext_echo("%s", json_ignition_message_buff_gau8); // For the verification of the JSON frame
+
+        // UART_data_struct ign_publish_msg;
+        // ign_publish_msg.cmd = 0xDD;
+        // ign_publish_msg.length_u16 = strlen((char *)json_ignition_message_buff_gau8);
+
+        // memcpy(ign_publish_msg.payload, json_ignition_message_buff_gau8, ign_publish_msg.length_u16);
+
+        // // if (get_MQTT_COnnection_Status() && (store_msg_flag == false) && (bytebeam_get_queue_spaceevent_cnt(mqtt_publish_msg_queue)!= 0))
+        // if (get_MQTT_COnnection_Status()) 
+        // {
+        //     bytebeam_ext_echo("publishing ignition in MQTT\r\n");
+        //     bytebeam_put_msg_que(mqtt_publish_msg_queue, &ign_publish_msg, 0);
+        // }
+    }
+    break;
+#endif
+    case 0xEE:
+    {
+        send_ack_nack(0, uart_strcut->cmd, NULL, 0);
+        bytebeam_sleep(500);
+        bytebeam_power_off(1);
+    }
+    break;
+    default:
+        break;
+    }
+    return 0;
+}
 
 int tork_send_can_data(uint32_t can_msg_id, uint8_t *can_data_arr, uint8_t seq)
 {
@@ -211,7 +597,7 @@ int tork_transmit_512_bytes()
             {
                 return ret_val;  // Return failure
             }
-            nwy_usleep(2000);
+            bytebeam_usleep(2000);
         }
         for (int loop_var = 0; loop_var < 8; loop_var++)
         {

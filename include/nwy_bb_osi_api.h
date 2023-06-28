@@ -90,12 +90,12 @@ void bytebeam_semaphore_delete(bytebeam_semaphore_t *sem)
     }
 }
 
-void bytebeam_usleep(uint32 us)
+void bb_usleep(uint32 us)
 {
     nwy_usleep(us);
 }
 
-void bytebeam_sleep(uint32 us)
+void bb_sleep(uint32 us)
 {
     nwy_sleep(ms);
 }

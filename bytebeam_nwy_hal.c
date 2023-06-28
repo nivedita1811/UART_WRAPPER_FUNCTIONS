@@ -1,51 +1,6 @@
 #include "neoway_api.h"
 #include "nwy_bb_uart.h"
 
-typedef enum 
-{
-    UART_PARITY_NONE,   // No parity
-    UART_PARITY_EVEN,   // Even parity
-    UART_PARITY_ODD     // Odd parity
-} uart_parity_t;
-
-typedef enum 
-{
-    UART_DATA_BITS_5,   // 5 data bits
-    UART_DATA_BITS_6,   // 6 data bits
-    UART_DATA_BITS_7,   // 7 data bits
-    UART_DATA_BITS_8    // 8 data bits
-} uart_data_bits_t;
-
-typedef enum 
-{
-    UART_STOP_BITS_1,   // 1 stop bit
-    UART_STOP_BITS_1_5, // 1.5 stop bits
-    UART_STOP_BITS_2    // 2 stop bits
-} uart_stop_bits_t;
-
-typedef enum 
-{
-    UART_MODE_BLOCKING,       // UART interface will block during data transfer
-    UART_MODE_NON_BLOCKING,   // UART interface will not block during data transfer
-    UART_MODE_INTERRUPT,      // UART interface will use interrupts for data transfer
-    UART_MODE_POLLING,        // UART interface will use polling for data transfer
-    UART_MODE_FULL_DUPLEX,    // UART interface will support simultaneous sending and receiving
-    UART_MODE_HALF_DUPLEX     // UART interface will support either sending or receiving, but not at the same time
-} nwy_uart_mode_t;
-
-typedef struct 
-{
-    uint32_t name;
-    uint32_t baud;
-    uart_parity_t parity;
-    uart_data_bits_t data_size;
-    uart_stop_bits_t stop_size;
-    bool flow_ctrl;
-    nwy_uart_mode_t mode; 
-    void (*recv_cb)(uint8_t* data, uint32_t length);
-    void (*tx_cb)(void);
-} bytebeam_uart_config_t;
-
 int bytebeam_uart_init(bytebeam_uart_config_t config) 
 {
     int ret_val = nwy_uart_init(config.name, config.mode);
@@ -76,19 +31,19 @@ bool bytebeam_uart_get_parameters(uint8_t hd, uart_parity_t* parity, uart_data_b
     return nwy_uart_get_para(hd, parity, data_size, stop_size, flow_ctrl);
 }
 
-int bytebeam_uart_send_data_byte_by_byte(uint8_t hd, uint8_t* data_ptr, uint32_t length, uint32_t delay_ms) 
+int bytebeam_uart_send_data_byte_in_bytes(uint8_t hd, uint8_t* data_ptr, uint32_t length, uint32_t delay_ms) 
 {
     int ret_val = 0;
 
-    for (uint32_t i = 0; i < length; i++) 
+    for (uint32_t loop_var = 0; loop_var < length; loop_var++) 
     {
-        ret_val = nwy_uart_send_data(hd, &data_ptr[i], 1);
+        ret_val = nwy_uart_send_data(hd, &data_ptr[loop_var], 1);
 
         if (ret_val != 0) 
         {
             return -1;  // Failure
         }
-        usleep(delay_ms);
+        bb_sleep(delay_ms);
     }
     return 0;  // Success
 }
