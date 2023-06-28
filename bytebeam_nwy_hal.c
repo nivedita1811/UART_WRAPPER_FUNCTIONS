@@ -78,7 +78,7 @@ int bytebeam_uart_send_single_byte(uint8_t hd, uint8_t data)
 }
 
 // Byte by byte receive function
-bool bytebeam_receive_byte_by_byte(bytebeam_uart_recv_callback_t recv_cb) 
+bool bytebeam_receive_in_bytes(bytebeam_uart_recv_callback_t recv_cb) 
 {
     // Here we just call the provided function, this will receive data byte by byte.
     return nwy_uart_reg_recv_cb((nwy_uart_recv_callback_t)recv_cb);

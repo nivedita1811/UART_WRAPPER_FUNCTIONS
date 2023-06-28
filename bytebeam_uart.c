@@ -141,7 +141,7 @@ int32_t send_ack_nack(uint8_t status, uint8_t command, uint8_t *payload, uint16_
     {
         for (int i = 0; i < 8 + len; i++)
         {
-            bytebeam_uart_send_data_byte_by_byte(STM_UART_fd, can_data, 8 + len, 1);
+            bytebeam_uart_send_data_in_bytes(STM_UART_fd, can_data, 8 + len, 1);
             bytebeam_usleep(1);
         }
         bytebeam_sleep(1);
@@ -562,7 +562,7 @@ int tork_send_can_data(uint32_t can_msg_id, uint8_t *can_data_arr, uint8_t seq)
     
     if (bytebeam_semaphore_acquire(uart_tx_semaphore, 0xFFFF) == true)
     {
-        int ret_val = bytebeam_uart_send_data_byte_by_byte(STM_UART_fd, can_data, 21, 50);
+        int ret_val = bytebeam_uart_send_data_in_bytes(STM_UART_fd, can_data, 21, 50);
         bytebeam_semaphore_release(uart_tx_semaphore);
         return ret_val;  
     }
