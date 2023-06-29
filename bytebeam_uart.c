@@ -4,7 +4,7 @@
 #include "nwy_bb_usb_serial.h"
 #include "nwy_bb_pm.h"
 
-void uart_config(void)
+void bytebeam_uart_config(void)
 {
    bytebeam_uart_config_t uart_config;
     
