@@ -4,48 +4,273 @@
 #include "nwy_bb_usb_serial.h"
 #include "nwy_bb_pm.h"
 
-void bytebeam_uart_config(void)
+/**
+ * \brief Initialize the UART communication with the necessary parameters.
+ *
+ * This function dynamically allocates a configuration structure,
+ * sets its parameters, initializes the UART with this configuration, and returns
+ * the UART's handle, which can be used in subsequent calls to UART functions.
+ * 
+ * \return The handle of the initialized UART on success, or -1 on failure.
+ */
+int bytebeam_uart_init(void) 
 {
-   bytebeam_uart_config_t uart_config;
-    
-   uart_config.name = STM_UART;
-   uart_config.baud = 2000000;
-   uart_config.parity = UART_PARITY_NONE;
-   uart_config.data_size = UART_DATA_BITS_8;
-   uart_config.stop_size = UART_STOP_BITS_1;
-   uart_config.flow_ctrl = false;
-   uart_config.recv_cb = uart_recv_handle;
-   uart_config.tx_cb = NULL;
-    
-   STM_UART_fd = bytebeam_uart_init(uart_config);
-    
-    if (STM_UART_fd != INVALID_UART_FD)
+    bytebeam_uart_config_t* uart_config = malloc(sizeof(bytebeam_uart_config_t));
+
+    if (uart_config == NULL) {
+        // Error handling for memory allocation failure
+        bytebeam_ext_echo("Error: Memory allocation for uart_config failed.\n");
+        return -1;
+    }
+
+    uart_config->name = STM_UART;
+    uart_config->baud = 2000000;
+    uart_config->parity = UART_PARITY_NONE;
+    uart_config->data_size = UART_DATA_BITS_8;
+    uart_config->stop_size = UART_STOP_BITS_1;
+    uart_config->flow_ctrl = false;
+    uart_config->recv_cb = uart_recv_handle;
+    uart_config->tx_cb = NULL;
+    uart_config->mode = UART_MODE_AT;
+
+    int ret_val = nwy_uart_init(uart_config->name, uart_config->mode);
+    if (ret_val < 0) 
     {
-        bytebeam_uart_set_baud(STM_UART_fd,uart_config.baud);
-        bytebeam_uart_reg_recv_cb(STM_UART_fd,uart_config.recv_cb);
-        bytebeam_set_rx_frame_timeout(STM_UART_fd, 2); 
-        message_queue_init();
+        // Error handling for UART initialization failure
+        bytebeam_ext_echo("Error: UART initialization failed.\n");
+        return -1;  // Failure
+    }
+    
+    return ret_val;  // Success, return the ret_val (handle)
+}
+
+/**
+ * \brief Set the baud rate for a UART channel.
+ *
+ * \param uart_handle The handle of the UART whose baud rate to set.
+ * \param baud The desired baud rate.
+ *
+ * \return True if the operation was successful, false otherwise.
+ */
+bool bytebeam_uart_set_baud(uint8_t uart_handle, uint32_t baud) 
+{
+    return nwy_uart_set_baud(uart_handle, baud);
+}
+
+/**
+ * \brief Get the baud rate for a UART channel.
+ *
+ * \param uart_handle The handle of the UART whose baud rate to retrieve.
+ * \param baud Pointer to a variable to store the current baud rate.
+ *
+ * \return True if the operation was successful, false otherwise.
+ */
+bool bytebeam_uart_get_baud(uint8_t uart_handle, uint32_t* baud) 
+{
+    return nwy_uart_get_baud(uart_handle, baud);
+}
+
+/**
+ * \brief Set the parameters for a UART channel.
+ *
+ * \param uart_handle The handle of the UART whose parameters to set.
+ * \param parity Parity setting for the UART.
+ * \param data_size Number of data bits.
+ * \param stop_size Number of stop bits.
+ * \param flow_ctrl Flow control setting.
+ *
+ * \return True if the operation was successful, false otherwise.
+ */
+bool bytebeam_uart_set_parameters(uint8_t uart_handle, uart_parity_t parity, uart_data_bits_t data_size, uart_stop_bits_t stop_size, bool flow_ctrl) 
+{
+    return nwy_uart_set_para(uart_handle, parity, data_size, stop_size, flow_ctrl);
+}
+
+/**
+ * \brief Get the parameters for a UART channel.
+ *
+ * \param uart_handle The handle of the UART whose parameters to retrieve.
+ * \param parity Pointer to a variable to store the current parity setting.
+ * \param data_size Pointer to a variable to store the current number of data bits.
+ * \param stop_size Pointer to a variable to store the current number of stop bits.
+ * \param flow_ctrl Pointer to a variable to store the current flow control setting.
+ *
+ * \return True if the operation was successful, false otherwise.
+ */
+bool bytebeam_uart_get_parameters(uint8_t uart_handle, uart_parity_t* parity, uart_data_bits_t* data_size, uart_stop_bits_t* stop_size, bool* flow_ctrl) 
+{
+    return nwy_uart_get_para(uart_handle, parity, data_size, stop_size, flow_ctrl);
+}
+
+/**
+ * \brief Send data in bytes through UART.
+ *
+ * \param uart_handle The handle of the UART to send data over.
+ * \param data_ptr Pointer to the data to send.
+ * \param length Length of the data to send.
+ * \param delay_ms Delay in milliseconds to pause between sending each byte.
+ *
+ * \return The total number of bytes sent.
+ */
+uint32_t bytebeam_uart_send_data_in_bytes(uint8_t uart_handle, uint8_t* data_ptr, uint32_t length, uint32_t delay_ms) 
+{
+    int8_t ret_val = 0;
+    uint32_t total_bytes_sent = 0;
+
+    for (uint32_t loop_var = 0; loop_var < length; loop_var++) 
+    {
+        ret_val = nwy_uart_send_data(uart_handle, &data_ptr[loop_var], 1);
+
+        if (ret_val <= 0) // Checking if send operation failed
+        {
+            return 1;// Failure, return 1 as error indicator
+        }
+        total_bytes_sent += ret_val;
+        bb_sleep(delay_ms);
+    }
+    return total_bytes_sent;  // Success, return total bytes sent
+}
+
+/**
+ * \brief Send a block of data over a UART channel.
+ *
+ * \param uart_handle The handle of the UART to send data over.
+ * \param data_ptr Pointer to the data to send.
+ * \param length Length of the data to send.
+ *
+ * \return The number of bytes sent, or 1 if the send operation failed.
+ */
+int bytebeam_uart_send_data_block(uint8_t uart_handle, uint8_t* data_ptr, uint32_t length) 
+{
+    int ret_val = nwy_uart_send_data(uart_handle, data_ptr, length);
+    
+    if (ret_val <= 0) // Checking if send operation failed
+    {
+        return 1;  // Failure, return 1 as error indicator
+    } 
+    else 
+    {
+        return ret_val;  // Success, return the number of bytes sent
+    }
+}
+
+/**
+ * \brief Send a single byte over a UART channel.
+ *
+ * \param uart_handle The handle of the UART to send data over.
+ * \param data The byte to send.
+ *
+ * \return The number of bytes sent (should be 1), or 1 if the send operation failed.
+ */
+int bytebeam_uart_send_single_byte(uint8_t uart_handle, uint8_t data) 
+{
+    int ret_val = nwy_uart_send_data(uart_handle, &data, 1);
+
+    if (ret_val <= 0)  // Checking if send operation failed
+    {
+        return 1;  // Failure, return 1 as error indicator
+    }
+    return ret_val;  // Success, return the number of bytes sent
+}
+
+/**
+ * \brief Register a transmit callback function for a UART channel.
+ *
+ * \param uart_handle The handle of the UART to register the callback for.
+ * \param tx_cb The callback function to register.
+ *
+ * \return True if the operation was successful, false otherwise.
+ */
+bool bytebeam_uart_register_transmit_callback(uint8_t uart_handle, bytebeam_uart_send_callback_t tx_cb) 
+{
+    return nwy_uart_reg_tx_cb(uart_handle, (nwy_uart_send_callback_t)tx_cb);
+}
+
+/**
+ * \brief Deinitialize a UART channel.
+ *
+ * \param uart_handle The handle of the UART to deinitialize.
+ *
+ * \return True if the operation was successful, false otherwise.
+ */
+bool bytebeam_uart_deinit(uint8_t uart_handle) 
+{
+    return nwy_uart_deinit(uart_handle);
+}
+
+/**
+ * \brief Set the receive frame timeout for a UART channel.
+ *
+ * \param uart_handle The handle of the UART to set the timeout for.
+ * \param time The timeout in milliseconds.
+ *
+ * \return True if the operation was successful, false otherwise.
+ */
+bool bytebeam_set_rx_frame_timeout(uint8_t uart_handle, int time) 
+{
+    return nwy_set_rx_frame_timeout(uart_handle, time);
+}
+
+/**
+ * \brief Send data over a UART port.
+ *
+ * \param port The port to send data over.
+ * \param data Pointer to the data to send.
+ * \param size The size of the data to send.
+ *
+ * \return True if the send operation was successful, false otherwise.
+ */
+bool bytebeam_at_uart_send(bytebeam_uart_port_t port, void* data, size_t size) 
+{
+    int result = nwy_at_uart_send((nwy_uart_port_t)port, data, size);
+    return result >= 0;
+}
+
+/**
+ * \brief Configure a UART channel.
+ *
+ * \param uart_config Pointer to a structure containing the desired configuration settings.
+ *
+ * \return The handle of the UART channel, or -1 if the initialization failed.
+ */
+void bytebeam_uart_config(bytebeam_uart_config_t* uart_config)
+{
+   if (uart_config == NULL) {
+        // Error handling for NULL pointer
+        bytebeam_ext_echo("Error: uart_config pointer is NULL.\n");
+        return -1;
+    }
+
+    int STM_UART_fd = nwy_uart_init(uart_config->name, uart_config->mode);
+
+    if (STM_UART_fd < 0)
+    {
+        // Error handling for UART initialization failure
+        bytebeam_ext_echo("Error: UART initialization failed.\n");
+        return -1;
     }
     else
     {
-        // Error handling for UART initialization failure
+        bytebeam_uart_set_baud(STM_UART_fd, uart_config->baud);
+        bytebeam_uart_reg_recv_cb(STM_UART_fd, uart_config->recv_cb);
+        bytebeam_set_rx_frame_timeout(STM_UART_fd, 2);
+        message_queue_init();
     }
+
+    return STM_UART_fd; // return the handle to the caller
 }
 
-void bytebeam_uart_printf(const char *format, ...)
+/**
+ * \brief Handles received UART data.
+ *
+ * This function is registered as the receive callback for the UART. 
+ * It processes the received data and enqueues it for later processing.
+ *
+ * \param str The received data.
+ * \param length The length of the received data.
+ */
+void uart_recv_handle(const char* str, uint32_t length)
 {
-    char send_buf[512] = "\r\n";
-    va_list ap;
-    size_t size = 2;
-    va_start(ap, format);
-    size += vsnprintf(send_buf + size, sizeof(send_buf) - size, format, ap);
-    va_end(ap);
-    bytebeam_uart_send_data_block(STM_UART_fd, (uint8_t *)send_buf, size);
-}
-
-void uart_recv_handle(const char *str, uint32_t length)
-{
-
     static struct timeval tv;
     static double s = 0;
     static double ms = 0;
@@ -55,34 +280,47 @@ void uart_recv_handle(const char *str, uint32_t length)
     gettimeofday(&tv, NULL);
     s = tv.tv_sec;
     ms = ((double)tv.tv_usec) / 1.0e3;
-    if (timestamp_start == 0)
-    {
+    if (timestamp_start == 0) {
         timestamp_start = (unsigned long long)(s * 1000 + ms);
     }
 
     timestamp_end = (unsigned long long)(s * 1000 + ms);
 
-    if ((timestamp_end - timestamp_start) > 1000)
-    {
+    if ((timestamp_end - timestamp_start) > 1000) {
         bytebeam_ext_echo("\r\n In uart callback Length Got: %d\r\n", length);
         timestamp_start = timestamp_end;
     }
 
-    // bytebeam_ext_echo("value of data received\r\n");
-    if (uart_thread_entry == 1)
+    if (uart_thread_entry == 1) 
     {
-        for (int i = 0; i < length; i++)
+        for (int i = 0; i < length; i++) 
         {
-            //    bytebeam_ext_echo("%X ",str[i]);
-            if (FAILED == uart_rx_array_queue_put(str[i]))
+            if (SUCCESS != uart_rx_array_queue_put(str[i])) 
             {
-                bytebeam_ext_echo("Put queue failure of data: %d", str[i]);
+                bytebeam_ext_echo("Failed to put data into queue. Queue is full.\n");
+            }
+            else
+            {
+                bytebeam_ext_echo("Successfully put data into queue.\n");
             }
         }
+    } 
+    else 
+    {
+        bytebeam_ext_echo("Failed to put data into queue. UART thread entry flag is not set.\n");
     }
-    // bytebeam_ext_echo("\r\n");
 }
 
+/**
+ * \brief Print the data contained in a UART_data_struct to stdout.
+ *
+ * This function is typically used for debugging. It prints the contents of a UART_data_struct
+ * in a human-readable format. This includes the start byte (STX), command (CMD), length of the payload,
+ * the payload itself, the CRC, the timestamp, and the end byte (ETX). The payload is printed
+ * with a line break after every 10 bytes for readability.
+ *
+ * \param uart_strcut The UART_data_struct to print.
+ */
 void print_uart_data_structure(UART_data_struct uart_strcut)
 {
     bytebeam_ext_echo("STX: %x CMD:%x Length:%d \r\nPayload:", uart_strcut.stx,
@@ -104,6 +342,18 @@ void print_uart_data_structure(UART_data_struct uart_strcut)
                       uart_strcut.etx);
 }
 
+/**
+ * \brief Publish CAN messages to MQTT.
+ *
+ * This function takes a UART_data_struct containing CAN message data and publishes it to MQTT.
+ * The function checks if there is space in the MQTT publish message queue. If the queue is full,
+ * a warning message is printed. Otherwise, the UART data is put in the queue for publishing.
+ * Note that the message is not published immediately, but placed in a queue for later processing.
+ * The function keeps track of how many packages it has handled in a static variable 'package_count'.
+ *
+ * \param uart_strcut A pointer to the UART_data_struct containing the CAN message to be published.
+ * \return 0 as a default return value. The return value might need to be adjusted based on the function requirements.
+ */
 int32_t send_can_mqtt(UART_data_struct *uart_strcut)
 {
     static uint16_t package_count = 0;
