@@ -1,26 +1,30 @@
-/**
- * @file bb_file.h
- * @brief ByteBeam File System API functions.
- */
-
-#ifndef BB_FILE_H
-#define BB_FILE_H
-
 #include "bb_file.h"
 
-/**
- * @brief Mounts the SD card.
- * @return True if successful, false otherwise.
- */
+/** 
+================================================================================================================================================
+
+@fn Name             : bool bytebeam_sdcard_mount()
+@b Scope             : Public
+@n@n@b Description   : This function mounts the SD card. 
+@return Return Value : Returns true if the mounting is successful, false otherwise.
+
+================================================================================================================================================
+*/
 bool bytebeam_sdcard_mount()
 {
     return nwy_sdk_sdcard_mount();
 }
 
-/**
- * @brief Checks the status of the SD card.
- * @return True if the SD card is available, false otherwise.
- */
+/** 
+================================================================================================================================================
+
+@fn Name             : bool bytebeam_sdcard_status()
+@b Scope             : Public
+@n@n@b Description   : This function checks the status of the SD card. 
+@return Return Value : Returns true if the SD card is ready, false otherwise.
+
+================================================================================================================================================
+*/
 bool bytebeam_sdcard_status()
 {
     int status = 0;
@@ -35,47 +39,79 @@ bool bytebeam_sdcard_status()
     return true;
 }
 
-/**
- * @brief Formats the SD card.
- */
+/** 
+================================================================================================================================================
+
+@fn Name             : void bytebeam_sdcard_format()
+@b Scope             : Public
+@n@n@b Description   : This function formats the SD card.
+@return Return Value : None.
+
+================================================================================================================================================
+*/
 void bytebeam_sdcard_format()
 {
     nwy_format_sdcard();
 }
 
-/**
- * @brief Unmounts the SD card.
- */
+/** 
+================================================================================================================================================
+
+@fn Name             : void bytebeam_sdcard_unmount()
+@b Scope             : Public
+@n@n@b Description   : This function unmounts the SD card.
+@return Return Value : None.
+
+================================================================================================================================================
+*/
+
 void bytebeam_sdcard_unmount()
 {
     nwy_sdk_sdcard_unmount();
 }
 
-/**
- * @brief Retrieves the available size of the SD card.
- * @return The available size in bytes.
- */
+/** 
+================================================================================================================================================
+
+@fn Name             : unsigned long long bytebeam_sdcard_available_size()
+@b Scope             : Public
+@n@n@b Description   : This function gets the available size of the SD card. 
+@return Return Value : Returns the available size of the SD card.
+
+================================================================================================================================================
+*/
 unsigned long long bytebeam_sdcard_available_size()
 {
     return nwy_sdk_vfs_free_size("/sdcard0/");
 }
 
-/**
- * @brief Creates a directory.
- * @param name The name of the directory to create.
- * @return 0 if successful, -1 otherwise.
- */
+/** 
+================================================================================================================================================
+
+@fn Name             : int bytebeam_dir_create(const char* name)
+@b Scope             : Public
+@n@n@b Description   : This function creates a directory with the given name. 
+@param Input Data    : Name of the directory.
+@return Return Value : Returns status code.
+
+================================================================================================================================================
+*/
 int bytebeam_dir_create(const char* name)
 {
     return nwy_sdk_vfs_mkdir(name);
 }
 
+/** 
+================================================================================================================================================
 
-/**
- * @brief Checks if a directory exists.
- * @param name The name of the directory to check.
- * @return True if the directory exists, false otherwise.
- */
+@fn Name             : bool bytebeam_dir_exist(const char* name)
+@b Scope             : Public
+@n@n@b Description   : This function checks if a directory with the given name exists. 
+@param Input Data    : Name of the directory.
+@return Return Value : Returns true if the directory exists, false otherwise.
+
+================================================================================================================================================
+*/
 bool bytebeam_dir_exist(const char* name)
 {
     int ret_code = 0;
@@ -98,34 +134,49 @@ bool bytebeam_dir_exist(const char* name)
     return true;
 }
 
-/**
- * @brief Destroys a directory.
- * @param name The name of the directory to destroy.
- * @return 0 if successful, -1 otherwise.
- */
+/** 
+================================================================================================================================================
+
+@fn Name             : int bytebeam_dir_destroy(const char* name)
+@b Scope             : Public
+@n@n@b Description   : This function destroys a directory with the given name. 
+@param Input Data    : Name of the directory.
+@return Return Value : Returns status code.
+
+================================================================================================================================================
+*/
 int bytebeam_dir_destroy(const char* name)
 {
     return nwy_sdk_vfs_rmdir_recursive(name);
 }
 
-/**
- * @brief Opens a file.
- * @param path The path to the file.
- * @param mode The file mode.
- * @return The file descriptor if successful, -1 otherwise.
- */
+/** 
+================================================================================================================================================
+
+@fn Name             : bytebeam_fdes bytebeam_fopen(const char* path, bytebeam_fmode_e mode)
+@b Scope             : Public
+@n@n@b Description   : This function opens a file with the given mode. 
+@param Input Data    : Path of the file and the file mode.
+@return Return Value : Returns a file descriptor.
+
+================================================================================================================================================
+*/
 bytebeam_fdes bytebeam_fopen(const char* path, bytebeam_fmode_e mode)
 {
     return nwy_sdk_fopen(path, mode);
 }
 
-/**
- * @brief Reads data from a file.
- * @param file The file descriptor.
- * @param dst The destination buffer to store the read data.
- * @param len The number of bytes to read.
- * @return The number of bytes read if successful, a negative value otherwise.
- */
+/** 
+================================================================================================================================================
+
+@fn Name             : int bytebeam_fread(bytebeam_fdes file, void* dst, size_t len)
+@b Scope             : Public
+@n@n@b Description   : This function reads from a file into a destination buffer. 
+@param Input Data    : File descriptor, destination buffer, and length of bytes to read.
+@return Return Value : Returns status code.
+
+================================================================================================================================================
+*/
 int bytebeam_fread(bytebeam_fdes file, void* dst, size_t len)
 {
     size_t bytes_read = 0;
@@ -140,13 +191,17 @@ int bytebeam_fread(bytebeam_fdes file, void* dst, size_t len)
     return BYTEBEAM_FSUCCESS;
 }
 
-/**
- * @brief Writes data to a file.
- * @param file The file descriptor.
- * @param src The source buffer containing the data to write.
- * @param len The number of bytes to write.
- * @return The number of bytes written if successful, a negative value otherwise.
- */
+/** 
+================================================================================================================================================
+
+@fn Name             : int bytebeam_fwrite(bytebeam_fdes file, void* src, size_t len)
+@b Scope             : Public
+@n@n@b Description   : This function writes to a file from a source buffer. 
+@param Input Data    : File descriptor, source buffer, and length of bytes to write.
+@return Return Value : Returns status code.
+
+================================================================================================================================================
+*/
 int bytebeam_fwrite(bytebeam_fdes file, void* src, size_t len)
 {
     size_t bytes_written = 0;
@@ -161,11 +216,17 @@ int bytebeam_fwrite(bytebeam_fdes file, void* src, size_t len)
     return BYTEBEAM_FSUCCESS;
 }
 
-/**
- * @brief Retrieves the size of a file.
- * @param path The path to the file.
- * @return The size of the file in bytes, or 0 if an error occurred.
- */
+/** 
+================================================================================================================================================
+
+@fn Name             : long bytebeam_fsize(const char* path)
+@b Scope             : Public
+@n@n@b Description   : This function gets the size of a file. 
+@param Input Data    : Path of the file.
+@return Return Value : Returns the size of the file.
+
+================================================================================================================================================
+*/
 long bytebeam_fsize(const char* path)
 {
     long size = 0;
@@ -180,44 +241,65 @@ long bytebeam_fsize(const char* path)
     return size;
 }
 
-/**
- * @brief Deletes a file.
- * @param path The path to the file.
- * @return 0 if successful, -1 otherwise.
- */
+/** 
+================================================================================================================================================
+
+@fn Name             : int bytebeam_fdelete(const char* path)
+@b Scope             : Public
+@n@n@b Description   : This function deletes a file. 
+@param Input Data    : Path of the file.
+@return Return Value : Returns status code.
+
+================================================================================================================================================
+*/
 int bytebeam_fdelete(const char* path)
 {
     return nwy_sdk_file_unlink(path);
 }
 
-/**
- * @brief Checks if a file exists.
- * @param path The path to the file.
- * @return True if the file exists, false otherwise.
- */
+/** 
+================================================================================================================================================
+
+@fn Name             : bool bytebeam_fexist(const char* path)
+@b Scope             : Public
+@n@n@b Description   : This function checks if a file exists. 
+@param Input Data    : Path of the file.
+@return Return Value : Returns true if the file exists, false otherwise.
+
+================================================================================================================================================
+*/
 bool bytebeam_fexist(const char* path)
 {
     return nwy_sdk_fexist(path);
 }
 
-/**
- * @brief Renames a file or directory.
- * @param old_path The current path of the file or directory.
- * @param new_path The new path of the file or directory.
- * @return 0 if successful, -1 otherwise.
- */
+/** 
+================================================================================================================================================
+
+@fn Name             : int bytebeam_frename(const char* old_path, const char* new_path)
+@b Scope             : Public
+@n@n@b Description   : This function renames a file. 
+@param Input Data    : Old and new path of the file.
+@return Return Value : Returns status code.
+
+================================================================================================================================================
+*/
 int bytebeam_frename(const char* old_path, const char* new_path)
 {
     return nwy_sdk_frename(old_path, new_path);
 }
 
-/**
- * @brief Sets the file position indicator of a file.
- * @param file The file descriptor.
- * @param offset The offset from the reference point specified by whence.
- * @param whence The reference point for the offset.
- * @return 0 if successful, -1 otherwise.
- */
+/** 
+================================================================================================================================================
+
+@fn Name             : int bytebeam_fseek(bytebeam_fdes file, int offset, bytebeam_fseek_offset_e whence)
+@b Scope             : Public
+@n@n@b Description   : This function sets the file pointer to a new location. 
+@param Input Data    : File descriptor, offset and whence indicator.
+@return Return Value : Returns status code.
+
+================================================================================================================================================
+*/
 int bytebeam_fseek(bytebeam_fdes file, int offset, bytebeam_fseek_offset_e whence)
 {
     int ret_offset = 0;
@@ -232,14 +314,18 @@ int bytebeam_fseek(bytebeam_fdes file, int offset, bytebeam_fseek_offset_e whenc
     return BYTEBEAM_FSUCCESS;
 }
 
-/**
- * @brief Closes a file.
- * @param file The file descriptor.
- * @return 0 if successful, -1 otherwise.
- */
+/** 
+================================================================================================================================================
+
+@fn Name             : int bytebeam_fclose(bytebeam_fdes file)
+@b Scope             : Public
+@n@n@b Description   : This function closes a file. 
+@param Input Data    : File descriptor.
+@return Return Value : Returns status code.
+
+================================================================================================================================================
+*/
 int bytebeam_fclose(bytebeam_fdes file)
 {
     return nwy_sdk_fclose(file);
 }
-
-#endif /* BB_FILE_H */
