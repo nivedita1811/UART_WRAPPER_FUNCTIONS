@@ -1,18 +1,10 @@
-/**
- * @file bytebeam_ext_echo.h
- * @brief ByteBeam Extended Echo API functions.
- */
-
 #ifndef BB_COMMON
 #define BB_COMMON
 
-#include "bytebeam_usb_serial.h"
+#include "bytebeam.h"
+#include "bb_common.h"
+#include "bb_usb_serial.h"
 
-/**
- * @brief Print formatted string to the external echo.
- * @param fmt The format string.
- * @param ... Additional arguments for the format string.
- */
 void bytebeam_ext_echo(char *fmt, ...)
 {
     static char echo_str[NWY_EXT_SIO_RX_MAX];
@@ -45,4 +37,3 @@ void bytebeam_ext_echo(char *fmt, ...)
     }
     bytebeam_unlock_mutex(echo_mutex);
 }
-#endif /* BYTEBEAM_EXT_ECHO_H */
