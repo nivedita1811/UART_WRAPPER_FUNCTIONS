@@ -1,3 +1,5 @@
+#include "bb_uart.h"
+
 int bytebeam_usb_serial_send(void *data, size_t size)
 {
     int ret_val = 0;
