@@ -1,130 +1,176 @@
 /**
- * @file bytebeam_osi.h
- * @brief ByteBeam Operating System Interface (OSI) functions.
- */
+=====================================================================================================================================================
 
-#ifndef BYTEBEAM_OSI_H
-#define BYTEBEAM_OSI_H
+@fn Name            : bytebeam_osiMessageQueue_t *bytebeam_create_msg_Que(uint32 msg_count, uint32 msg_size)
+@b Scope            : Public
+@n@n@b Description  : Creates a new message queue.
+@param msg_count    : Maximum number of messages in the queue.
+@param msg_size     : Size of each message in the queue.
+@return Return Value: A pointer to the newly created message queue.
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
-
-/** Message Queue structure. */
-typedef struct bytebeam_osiMessageQueue {
-    void* queue; /**< Pointer to the underlying message queue object. */
-} bytebeam_osiMessageQueue_t;
-
-/** Mutex structure. */
-typedef struct bytebeam_osiMutex {
-    void* mutex; /**< Pointer to the underlying mutex object. */
-} bytebeam_osiMutex_t;
-
-/**
- * @brief Creates a message queue.
- * @param msg_count The maximum number of messages that the queue can hold.
- * @param msg_size The size of each message in bytes.
- * @return A pointer to the created message queue, or NULL if creation failed.
- */
+=====================================================================================================================================================
+*/
 bytebeam_osiMessageQueue_t *bytebeam_create_msg_Que(uint32 msg_count, uint32 msg_size) {
     return nwy_create_msg_Que(msg_count, msg_size);
 }
 
 /**
- * @brief Deletes a message queue.
- * @param mq The message queue to delete.
- */
+=====================================================================================================================================================
+
+@fn Name            : void bytebeam_delete_msg_que(bytebeam_osiMessageQueue_t *mq)
+@b Scope            : Public
+@n@n@b Description  : Deletes a message queue.
+@param mq           : A pointer to the message queue to be deleted.
+@return Return Value: None.
+
+=====================================================================================================================================================
+*/
 void bytebeam_delete_msg_que(bytebeam_osiMessageQueue_t *mq) {
     nwy_delete_msg_que((nwy_osiMessageQueue_t *)mq);
 }
 
 /**
- * @brief Puts a message in a queue.
- * @param mq The message queue.
- * @param msg The message to put in the queue.
- * @param timeout The maximum time to wait for space in the queue (in milliseconds).
- * @return True if the message was successfully put in the queue, false otherwise.
- */
+=====================================================================================================================================================
+
+@fn Name            : bool bytebeam_put_msg_que(bytebeam_osiMessageQueue_t *mq, const void *msg, uint32 timeout)
+@b Scope            : Public
+@n@n@b Description  : Puts a message into the queue.
+@param mq           : A pointer to the message queue.
+@param msg          : A pointer to the message to be put into the queue.
+@param timeout      : Time to wait if the queue is full.
+@return Return Value: True if the operation was successful, false otherwise.
+
+=====================================================================================================================================================
+*/
 bool bytebeam_put_msg_que(bytebeam_osiMessageQueue_t *mq, const void *msg, uint32 timeout) {
     return nwy_put_msg_que((nwy_osiMessageQueue_t *)mq, msg, timeout);
 }
 
 /**
- * @brief Gets a message from a queue.
- * @param mq The message queue.
- * @param msg The buffer to store the retrieved message.
- * @param timeout The maximum time to wait for a message in the queue (in milliseconds).
- * @return True if a message was successfully retrieved from the queue, false otherwise.
- */
+=====================================================================================================================================================
+
+@fn Name            : bool bytebeam_get_msg_que(bytebeam_osiMessageQueue_t *mq, const void *msg, uint32 timeout)
+@b Scope            : Public
+@n@n@b Description  : Gets a message from the queue.
+@param mq           : A pointer to the message queue.
+@param msg          : A pointer to the place to store the retrieved message.
+@param timeout      : Time to wait if the queue is empty.
+@return Return Value: True if a message was retrieved, false otherwise.
+
+=====================================================================================================================================================
+*/
 bool bytebeam_get_msg_que(bytebeam_osiMessageQueue_t *mq, const void *msg, uint32 timeout) {
     return nwy_get_msg_que((nwy_osiMessageQueue_t *)mq, (void *)msg, timeout);
 }
 
 /**
- * @brief Gets the number of pending events in a queue.
- * @param mq The message queue.
- * @return The number of pending events in the queue.
- */
+=====================================================================================================================================================
+
+@fn Name            : uint32_t bytebeam_get_queue_pendingevent_cnt(bytebeam_osiMessageQueue_t *mq)
+@b Scope            : Public
+@n@n@b Description  : Gets the number of pending events in a queue.
+@param mq           : A pointer to the message queue.
+@return Return Value: Number of pending events.
+
+=====================================================================================================================================================
+*/
 uint32_t bytebeam_get_queue_pendingevent_cnt(bytebeam_osiMessageQueue_t *mq) {
     return nwy_get_queue_pendingevent_cnt((nwy_osiMessageQueue_t *)mq);
 }
 
 /**
- * @brief Gets the number of space events in a queue.
- * @param mq The message queue.
- * @return The number of space events in the queue.
- */
+=====================================================================================================================================================
+
+@fn Name            : uint32_t bytebeam_get_queue_spaceevent_cnt(bytebeam_osiMessageQueue_t *mq)
+@b Scope            : Public
+@n@n@b Description  : Gets the number of space events in a queue.
+@param mq           : A pointer to the message queue.
+@return Return Value: Number of space events.
+
+=====================================================================================================================================================
+*/
 uint32_t bytebeam_get_queue_spaceevent_cnt(bytebeam_osiMessageQueue_t *mq) {
     return nwy_get_queue_spaceevent_cnt((nwy_osiMessageQueue_t *)mq);
 }
 
 /**
- * @brief Creates a mutex.
- * @return A pointer to the created mutex.
- */
+=====================================================================================================================================================
+
+@fn Name            : bytebeam_osiMutex_t *bytebeam_create_mutex()
+@b Scope            : Public
+@n@n@b Description  : Creates a new mutex.
+@return Return Value: A pointer to the newly created mutex.
+
+=====================================================================================================================================================
+*/
 bytebeam_osiMutex_t *bytebeam_create_mutex() {
     return nwy_create_mutex();
 }
 
 /**
- * @brief Locks a mutex.
- * @param mutex The mutex to lock.
- * @param timeout The maximum time to wait for the mutex to become available (in milliseconds).
- * @return True if the mutex was successfully locked, false otherwise.
- */
+=====================================================================================================================================================
+
+@fn Name            : bool bytebeam_lock_mutex(bytebeam_osiMutex_t *mutex, uint32_t timeout)
+@b Scope            : Public
+@n@n@b Description  : Locks a mutex.
+@param mutex        : A pointer to the mutex.
+@param timeout      : Time to wait if the mutex is already locked.
+@return Return Value: True if the operation was successful, false otherwise.
+
+=====================================================================================================================================================
+*/
 bool bytebeam_lock_mutex(bytebeam_osiMutex_t *mutex, uint32_t timeout) {
     return nwy_lock_mutex((nwy_osiMutex_t *)mutex, timeout);
 }
 
 /**
- * @brief Unlocks a mutex.
- * @param mutex The mutex to unlock.
- */
+=====================================================================================================================================================
+
+@fn Name            : void bytebeam_unlock_mutex(bytebeam_osiMutex_t *mutex)
+@b Scope            : Public
+@n@n@b Description  : Unlocks a mutex.
+@param mutex        : A pointer to the mutex.
+@return Return Value: None.
+
+=====================================================================================================================================================
+*/
 void bytebeam_unlock_mutex(bytebeam_osiMutex_t *mutex) {
     nwy_unlock_mutex((nwy_osiMutex_t *)mutex);
 }
 
 /**
- * @brief Deletes a mutex.
- * @param mutex The mutex to delete.
- */
+=====================================================================================================================================================
+
+@fn Name            : void bytebeam_delete_mutex(bytebeam_osiMutex_t *mutex)
+@b Scope            : Public
+@n@n@b Description  : Deletes a mutex.
+@param mutex        : A pointer to the mutex.
+@return Return Value: None.
+
+=====================================================================================================================================================
+*/
 void bytebeam_delete_mutex(bytebeam_osiMutex_t *mutex) {
     nwy_delete_mutex((nwy_osiMutex_t *)mutex);
 }
 
-/**
- * @brief Semaphore structure.
- */
-typedef struct bytebeam_semaphore {
-    void* semaphore; /**< Pointer to the underlying semaphore object. */
+// Wrapper for Semaphore API
+typedef struct 
+{
+    nwy_osiSemaphore_t *semaphore;
 } bytebeam_semaphore_t;
 
 /**
- * @brief Creates a semaphore.
- * @param max_count The maximum count value of the semaphore.
- * @param init_count The initial count value of the semaphore.
- * @return A pointer to the created semaphore, or NULL if creation failed.
- */
+=====================================================================================================================================================
+
+@fn Name            : bytebeam_semaphore_t *bytebeam_semaphore_create(uint32_t max_count, uint32_t init_count)
+@b Scope            : Public
+@n@n@b Description  : Creates a new semaphore.
+@param max_count    : Maximum count for the semaphore.
+@param init_count   : Initial count for the semaphore.
+@return Return Value: A pointer to the newly created semaphore.
+
+=====================================================================================================================================================
+*/
 bytebeam_semaphore_t *bytebeam_semaphore_create(uint32_t max_count, uint32_t init_count) 
 {
     bytebeam_semaphore_t *new_semaphore = malloc(sizeof(bytebeam_semaphore_t));
@@ -136,11 +182,17 @@ bytebeam_semaphore_t *bytebeam_semaphore_create(uint32_t max_count, uint32_t ini
 }
 
 /**
- * @brief Acquires a semaphore.
- * @param sem The semaphore to acquire.
- * @param timeout The maximum time to wait for the semaphore to become available (in milliseconds).
- * @return True if the semaphore was successfully acquired, false otherwise.
- */
+=====================================================================================================================================================
+
+@fn Name            : bool bytebeam_semaphore_acquire(bytebeam_semaphore_t *sem, uint32_t timeout)
+@b Scope            : Public
+@n@n@b Description  : Acquires a semaphore.
+@param sem          : A pointer to the semaphore.
+@param timeout      : Time to wait if the semaphore is already locked.
+@return Return Value: True if the operation was successful, false otherwise.
+
+=====================================================================================================================================================
+*/
 bool bytebeam_semaphore_acquire(bytebeam_semaphore_t *sem, uint32_t timeout) 
 {
     if(sem != NULL) 
@@ -154,9 +206,16 @@ bool bytebeam_semaphore_acquire(bytebeam_semaphore_t *sem, uint32_t timeout)
 }
 
 /**
- * @brief Releases a semaphore.
- * @param sem The semaphore to release.
- */
+=====================================================================================================================================================
+
+@fn Name            : void bytebeam_semaphore_release(bytebeam_semaphore_t *sem)
+@b Scope            : Public
+@n@n@b Description  : Releases a semaphore.
+@param sem          : A pointer to the semaphore.
+@return Return Value: None.
+
+=====================================================================================================================================================
+*/
 void bytebeam_semaphore_release(bytebeam_semaphore_t *sem) 
 {
     if(sem != NULL) 
@@ -166,9 +225,16 @@ void bytebeam_semaphore_release(bytebeam_semaphore_t *sem)
 }
 
 /**
- * @brief Deletes a semaphore.
- * @param sem The semaphore to delete.
- */
+=====================================================================================================================================================
+
+@fn Name            : void bytebeam_semaphore_delete(bytebeam_semaphore_t *sem)
+@b Scope            : Public
+@n@n@b Description  : Deletes a semaphore.
+@param sem          : A pointer to the semaphore.
+@return Return Value: None.
+
+=====================================================================================================================================================
+*/
 void bytebeam_semaphore_delete(bytebeam_semaphore_t *sem) 
 {
     if(sem != NULL) 
@@ -179,21 +245,33 @@ void bytebeam_semaphore_delete(bytebeam_semaphore_t *sem)
 }
 
 /**
- * @brief Suspends execution for a specified number of microseconds.
- * @param us The number of microseconds to sleep.
- */
+=====================================================================================================================================================
+
+@fn Name            : void bb_usleep(uint32 us)
+@b Scope            : Public
+@n@n@b Description  : Puts the thread to sleep for a specified number of microseconds.
+@param us           : Time in microseconds to sleep.
+@return Return Value: None.
+
+=====================================================================================================================================================
+*/
 void bb_usleep(uint32 us)
 {
     nwy_usleep(us);
 }
 
 /**
- * @brief Suspends execution for a specified number of milliseconds.
- * @param ms The number of milliseconds to sleep.
- */
+=====================================================================================================================================================
+
+@fn Name            : void bb_sleep(uint32 us)
+@b Scope            : Public
+@n@n@b Description  : Puts the thread to sleep for a specified number of milliseconds.
+@param ms           : Time in milliseconds to sleep.
+@return Return Value: None.
+
+=====================================================================================================================================================
+*/
 void bb_sleep(uint32 us)
 {
     nwy_sleep(ms);
 }
-
-#endif /* BYTEBEAM_OSI_H */
